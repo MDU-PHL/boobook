@@ -1,6 +1,6 @@
 # `boobook`: a tool to count RNA-seq reads mapping to genomic features
 A Python tool that transforms RNA-seq data into an input file suitable for
-Degust
+[Degust](http://vicbioinformatics.com/degust/index.html).
 
 # Etymology
 
@@ -46,13 +46,19 @@ to understand if there are differences in gene expression across treatments.
 
 counts.csv
 
-    * a comma-delimited file with features along rows
+    * a comma-delimited file with features along rows --- the file can be
+     directly loaded into Digust
 
 stats.text
 
     * some QC data
 
-# Todo
+# TODO
 
-  * Separate genbank parsing from saving gff file in class GenBank
-  * Create class Project
+ * Add an argument parser
+
+ * Fix up the input tab file
+
+    - Needs to include a column to let the program know to update count
+
+ * Need to allow the count of more than one feature --- right now only CDS
