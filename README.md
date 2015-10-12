@@ -1,6 +1,23 @@
-# rna_count.py
+# `boobook`: a tool to count RNA-seq reads mapping to genomic features
 A Python tool that transforms RNA-seq data into an input file suitable for
 Degust
+
+# Etymology
+
+A southern boobook (*Ninox boobook*) is an owl from Australia, NZ, and New Guinea.
+It eats loads of insects (more than any other owl in Australia), and will
+regurgitate the remains as a pellet. These pellets are studied carefully by
+biologists to figure out what the owls eat. In the same spirit, `boobook` will
+eat up all your RNA-seq reads, and produce pellets (tables) of collated counts
+of reads mapping to chosen genomic features. Biologists can then study the pellets
+to understand if there are differences in gene expression across treatments.
+
+# Depends
+* `BWA` (>= 0.7.12-r1039)
+
+* `samtools` (>= 1.2 (using htslib 1.2.1))
+
+* `HTseq` (>=version 0.6.0)
 
 # Inputs
 
@@ -38,4 +55,4 @@ stats.text
 # Todo
 
   * Separate genbank parsing from saving gff file in class GenBank
-  * Create class Project 
+  * Create class Project
