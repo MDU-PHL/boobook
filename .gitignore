@@ -1,0 +1,4 @@
+test_rna_counts.py
+.remote-sync.json
+test*
+test/*
