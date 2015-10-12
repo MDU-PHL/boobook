@@ -1,4 +1,4 @@
-# `boobook`: a tool to count RNA-seq reads mapping to genomic features
+# `boobook`: a Python tool to count RNA-seq reads mapping to genomic features
 A Python tool that transforms RNA-seq data into an input file suitable for
 [Degust](http://vicbioinformatics.com/degust/index.html).
 
@@ -19,6 +19,7 @@ to understand if there are differences in gene expression across treatments.
 
 * `HTseq` (>=version 0.6.0)
 
+<!--
 # Inputs
 
 ## Positional arguments
@@ -52,13 +53,18 @@ counts.csv
 stats.text
 
     * some QC data
+-->
 
 # TODO
 
  * Add an argument parser
+
+ * Allow pellets to be saved
 
  * Fix up the input tab file
 
     - Needs to include a column to let the program know to update count
 
  * Need to allow the count of more than one feature --- right now only CDS
+
+ * Update documentation
