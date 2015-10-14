@@ -97,7 +97,7 @@ feature. At the moment these include:
 
 
 * The file contains a header that describes the content of the column
-* The file can uploaded directly in to
+* The file can be uploaded directly in to
 [Degust](http://vicbioinformatics.com/degust/index.html) for analysis
 
 <!--
