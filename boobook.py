@@ -38,19 +38,6 @@ def invert_strand( iv ):
       raise ValueError, "Illegal strand"
    return iv2
 
-class UnknownChrom( Exception ):
-   pass
-
-def invert_strand( iv ):
-   iv2 = iv.copy()
-   if iv2.strand == "+":
-      iv2.strand = "-"
-   elif iv2.strand == "-":
-      iv2.strand = "+"
-   else:
-      raise ValueError, "Illegal strand"
-   return iv2
-
 def count_reads_in_features( sam_filename, gff_filename, samtype, order, stranded, \
       overlap_mode, feature_type, id_attribute, quiet, minaqual, samout ):
 
@@ -666,7 +653,7 @@ class GBk:
         sorted_gff_recs = sorted(gff_recs, key=itemgetter(3))
         out_str = ""
         out_str += "##gff-version 3\n"
-        out_str += "##source-version rna_counts.py 0.01\n"
+        out_str += "##source-version boobook.py 0.01\n"
         out_str += "##data This file was mode on " + time.strftime("%d/%m/%Y") + "\n"
         out_str += "##description " + self.gb.description + "\n"
         out_str += "##sequence-region " + refname + " " + "1 " + str(len(self.gb.seq)) + "\n"
@@ -818,18 +805,65 @@ class ReadData:
         pickle_obj = open(pickle_dump, "w")
         pickle.dump(self, pickle_obj)
         pickle_obj.close()
-    def collate_counts(self):
-        read_sets = self.__dict__["reads"].keys()
+    def make_pellet(self, include_features):
+        if not os.path.isdir(self.results_path):
+            os.makedirs(self.results_path)
+        pellet_fn = os.path.join(self.results_path,"boobook_pellet.csv")
+        read_sets = sorted(self.__dict__["reads"].keys())
         feature_list = sorted(self.__dict__["reads"][read_sets[0]]["counts"].keys())
         collated_counts = []
         for f in feature_list:
             feat_counts = [f]
+            product = ""
+            gene_id = ""
+            gi = ""
+            gene = ""
+            tmp_qual = self.features[f]
+            for feat in include_features:
+                try:
+                    quals = tmp_qual[feat].qualifiers
+                    try:
+                        product = '"' + quals["product"][0] + '"'
+                    except:
+                        pass
+                    try:
+                        gene = quals["gene"][0]
+                    except:
+                        pass
+                    try:
+                        tmp_db = quals["db_xref"]
+                        try:
+                            gi = [ref[4:] for ref in tmp_db if re.match("GI", ref)][0]
+                        except:
+                            pass
+                        try:
+                            gene_id = [ref[7:] for ref in tmp_db if re.match("GeneID", ref)][0]
+                        except:
+                            pass
+                    except:
+                        pass
+                except:
+                    pass
+            feat_counts.extend([product, gene_id, gi, gene])
+            print feat_counts
             for r in read_sets:
-                feat_counts.append(self.__dict__["reads"][r]["counts"][f])
+                feat_counts.append(str(self.__dict__["reads"][r]["counts"][f]))
+            feat_counts = ",".join(feat_counts) + "\n"
             collated_counts.append(feat_counts)
-        print read_sets
+        header = ["locus_tag", "Product", "GeneID", "GI", "Gene"]
+        for r in read_sets:
+            tmp = self.__dict__["reads"][r]['treat'] + "_" + \
+                self.__dict__["reads"][r]['rep']
+            header.append(tmp)
+        header = ",".join(header) + "\n"
+        print header
         for i in range(5):
             print collated_counts[i]
+        pellet_con = open(pellet_fn, "w")
+        pellet_con.write(header)
+        pellet_con.write("".join(collated_counts))
+        pellet_con.close()
+        print "Pellet successfully created!"
 
 if __name__ == "__main__":
     debug = False
@@ -843,6 +877,9 @@ if __name__ == "__main__":
     reference.filter_features(features = 'CDS', qualifier = 'locus_tag')
     reference.write_gff()
     reference.write_fasta()
+    reads.features = reference.features
+    # for k in reads.features.keys():
+    #     print reads.features[k]['CDS']
     mapper_index = BWAindex(in_fasta = reference.fasta)
     mapper_run = BWAmem(threads = 72, ref = reference.fasta, in_fq1 = reads["Sa_JKD6009_L30T_1"]["link"])
     sam_view = SamtoolsViewCommandline(threads = 8, q=60, S=True, b = True, u = True, ref = reference.fasta, input = "-")
@@ -850,4 +887,4 @@ if __name__ == "__main__":
     run_index = subprocess.Popen(str(mapper_index).split())
     run_index.wait()
     reads.count_features(reference.gff)
-    reads.collate_counts()
+    reads.make_pellet(["CDS"])
