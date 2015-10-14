@@ -87,7 +87,6 @@ you will find a single file:
 
 * Each row contains counts of reads mapping to a single feature across all
  treatments and replicates
-
 * Along with the count, each row has metadata that can help identify the
 feature. At the moment these include:
     - locus_tag
@@ -98,8 +97,8 @@ feature. At the moment these include:
 
 
 * The file contains a header that describes the content of the column
-* a comma-delimited file with features along rows --- the file can be directly
-loaded into Digust
+* The file can uploaded directly in to
+[Degust](http://vicbioinformatics.com/degust/index.html) for analysis
 
 <!--
 stats.text
