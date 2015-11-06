@@ -19,6 +19,7 @@ import sys
 import time
 import traceback
 import warnings
+import click
 
 ## default parameters
 version = "boobook:0.1"
@@ -590,10 +591,17 @@ class GBk:
             features = [features]
         assert type(qualifier) is str, "qualifier is not a string: %r" % qualifier
         self.features = {}
+        tmp_count = 0
+        tmp_dict = {}
         count_found_features = 0
         count_found_features_with_qualifiers = 0
         count_per_feature = dict((f, 0) for f in features)
         for (index, feat) in enumerate(self.gb.features):
+            tmp_count += 1
+            try:
+                tmp_dict[feat.type] += 1
+            except:
+                tmp_dict[feat.type] = 1
             if feat.type in features:
                 count_found_features += 1
                 if qualifier in feat.qualifiers:
@@ -614,6 +622,9 @@ class GBk:
         print "Counts per feature type:"
         for f in features:
             print "\t" + f + " = " + str(count_per_feature[f])
+        print "#####"
+        for f in tmp_dict:
+            print "\t" + f + " = " + str(tmp_dict[f])
         return
     def write_gff(self):
         '''
@@ -638,10 +649,12 @@ class GBk:
                 tmp_rec = feature_d['CDS']
             else:
                 tmp_rec = feature_d[feature_k[0]]
+            if feature_k[0] == 'tRNA':
+                print feature_d[feature_k[0]]
             ltag = tmp_rec.qualifiers['locus_tag'][0]
             coords = tmp_rec.location
             (start, end, strand) = self.__parse_location(coords)
-            attrib = "ID="+ltag
+            attrib = "ID="+ltag+";Type="+feature_k[0]
             gff_recs.append((refname, source, feature, start, end, score, strand, frame, attrib))
             n_keys = len(feature_k)
             if n_keys == 1:
@@ -760,7 +773,7 @@ class ReadData:
             self.__dict__["reads"][r]["link"] = tmp_reads
             self.__dict__["reads"][r]["align"] = os.path.join(tmp_dir, "alignment")
         return
-    def count_features(self, ref):
+    def count_features(self, ref, force_align = False, force_count = False):
         global mapper_run
         global sam_view
         global sam_sort
@@ -769,7 +782,7 @@ class ReadData:
             mapper_run.in_fq1 = self[r]["link"]
             sam_sort.out_prefix = self[r]['align']
             print '#' * 80
-            if not os.path.isfile(outbam):
+            if not os.path.isfile(outbam) or force_align:
                 print '#### RUNNING BWA MEM on %s' % r
                 run_align1 = subprocess.Popen(str(mapper_run).split(), stdout = subprocess.PIPE, bufsize = -1)
                 out,err = run_align1.communicate()
@@ -784,7 +797,7 @@ class ReadData:
             else:
                 print '### Found alignment file for %s' % r
             print '#' * 80
-            if 'counts' not in self.__dict__["reads"][r]:
+            if 'counts' not in self.__dict__["reads"][r] or force_count or force_align:
                 print '#### COUNTING READS MAPPED TO FEATURES on %s' % r
                 self[r]['counts'] = count_reads_in_features(sam_filename = outbam,\
                                         gff_filename = ref,\
@@ -820,8 +833,12 @@ class ReadData:
             gene = ""
             tmp_qual = self.features[f]
             for feat in include_features:
+                # if feat == 'tRNA':
+                #     print feat
+                #     print tmp_qual
                 try:
                     quals = tmp_qual[feat].qualifiers
+                    feat_type = feat
                     try:
                         product = '"' + quals["product"][0] + '"'
                     except:
@@ -844,47 +861,60 @@ class ReadData:
                         pass
                 except:
                     pass
-            feat_counts.extend([product, gene_id, gi, gene])
-            print feat_counts
+            feat_counts.extend([product, gene_id, gi, gene, feat_type])
             for r in read_sets:
                 feat_counts.append(str(self.__dict__["reads"][r]["counts"][f]))
             feat_counts = ",".join(feat_counts) + "\n"
             collated_counts.append(feat_counts)
-        header = ["locus_tag", "Product", "GeneID", "GI", "Gene"]
+        header = ["locus_tag", "Product", "GeneID", "GI", "Gene", "Feature"]
         for r in read_sets:
             tmp = self.__dict__["reads"][r]['treat'] + "_" + \
                 self.__dict__["reads"][r]['rep']
             header.append(tmp)
         header = ",".join(header) + "\n"
-        print header
-        for i in range(5):
-            print collated_counts[i]
+        # print header
+        # for i in range(5):
+        #     print collated_counts[i]
         pellet_con = open(pellet_fn, "w")
         pellet_con.write(header)
         pellet_con.write("".join(collated_counts))
         pellet_con.close()
         print "Pellet successfully created!"
 
+@click.command()
+@click.option("--work_dir", "-i", \
+                help = '''
+                The project folder for boobook''', \
+                default = ".")
+@click.option("--force", \
+                help = '''
+                Force re-run of analysis''', \
+                is_flag = True)
+@click.argument('INFILE')
+def boobook(infile, work_dir, force):
+    pass
+
 if __name__ == "__main__":
-    debug = False
-    if debug and os.path.isdir("test/sample_counts/"):
-        shutil.rmtree("test/sample_counts/")
-    reads = ReadData("test/", force = True)
-    reads.read_input("infile.tab")
-    reads.create_subfolders()
-    reference = GBk("test/", force = True)
-    reference.read_gb(infile = "test/Sa6008.gbk")
-    reference.filter_features(features = 'CDS', qualifier = 'locus_tag')
-    reference.write_gff()
-    reference.write_fasta()
-    reads.features = reference.features
-    # for k in reads.features.keys():
-    #     print reads.features[k]['CDS']
-    mapper_index = BWAindex(in_fasta = reference.fasta)
-    mapper_run = BWAmem(threads = 72, ref = reference.fasta, in_fq1 = reads["Sa_JKD6009_L30T_1"]["link"])
-    sam_view = SamtoolsViewCommandline(threads = 8, q=60, S=True, b = True, u = True, ref = reference.fasta, input = "-")
-    sam_sort = SamtoolsSortCommandline(threads = 8, input_bam = "-", out_prefix = reads["Sa_JKD6009_L30T_1"]["align"])
-    run_index = subprocess.Popen(str(mapper_index).split())
-    run_index.wait()
-    reads.count_features(reference.gff)
-    reads.make_pellet(["CDS"])
+    boobook()
+    # debug = False
+    # if debug and os.path.isdir("test/sample_counts/"):
+    #     shutil.rmtree("test/sample_counts/")
+    # reads = ReadData("test/", force = True)
+    # reads.read_input("infile.tab")
+    # reads.create_subfolders()
+    # reference = GBk("test/", force = True)
+    # reference.read_gb(infile = "test/Saa6008_final.gbk")
+    # reference.filter_features(features = ['CDS','scRNA'], qualifier = 'locus_tag')
+    # reference.write_gff()
+    # reference.write_fasta()
+    # reads.features = reference.features
+    # # for k in reads.features.keys():
+    # #     print reads.features[k]['CDS']
+    # mapper_index = BWAindex(in_fasta = reference.fasta)
+    # mapper_run = BWAmem(threads = 72, ref = reference.fasta, in_fq1 = reads["Sa_JKD6009_L30T_1"]["link"])
+    # sam_view = SamtoolsViewCommandline(threads = 8, q=60, S=True, b = True, u = True, ref = reference.fasta, input = "-")
+    # sam_sort = SamtoolsSortCommandline(threads = 8, input_bam = "-", out_prefix = reads["Sa_JKD6009_L30T_1"]["align"])
+    # run_index = subprocess.Popen(str(mapper_index).split())
+    # run_index.wait()
+    # reads.count_features(reference.gff, force_align = True)
+    # reads.make_pellet(['CDS','scRNA'])
