@@ -28,6 +28,10 @@ version = "boobook:0.1"
 # to ensure click gives us the option for -h and --help and set the column
 # width of the console so as to make printing of help easy to read
 rows, columns = os.popen('stty size', 'r').read().split()
+try:
+    int(columns)
+except:
+    columns = 80
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'],
                         max_content_width = columns)
 
