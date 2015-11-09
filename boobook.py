@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 '''
 A Python tool to count reads mapped to genomic features
 '''
@@ -23,6 +24,9 @@ import click
 
 ## default parameters
 version = "boobook:0.1"
+
+# to ensure click gives us the option for -h and --help
+CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 ## modified count script from HTSeq
 
@@ -542,8 +546,9 @@ class GBk:
         if os.path.isdir(self.reference):
             if not force:
                 raise RuntimeError('''
-                    Analysis has been run already. Use --force flag to \
-                            re-run using the same directory'''
+                    Analysis has been run already. Use --change_ref flag to \n
+                            re-run using the same directory with a different
+                            reference'''
                     )
         else:
             os.makedirs(self.reference)
@@ -587,6 +592,10 @@ class GBk:
         >>> data.filter_features(features = ['CDS', 'tRNA'])
 
         '''
+        #transfomr qualifier into ascii
+        # this allows the assert below to pass if the string is in unicode
+        # format, as it comes out of click
+        qualifier = qualifier.encode('ascii', 'ignore')
         if (not isinstance(features, list)):
             features = [features]
         assert type(qualifier) is str, "qualifier is not a string: %r" % qualifier
@@ -692,6 +701,11 @@ class GFF:
     def __init__(self):
         return
 
+class Counter:
+    def __init__(self, type = 'b+h'):
+        self.type = type
+    def count(self,)
+
 class ReadData:
     def __init__(self, path, force):
         self.workdir = path
@@ -702,8 +716,7 @@ class ReadData:
         if os.path.isdir(self.sample_path):
             if not force:
                 raise RuntimeError('''
-                    Analysis has been run already. Use --force flag to \
-                            re-run using the same directory'''
+                    Analysis has been run already. Use --add flag to re-run using the same directory'''
                     )
             else:
                 print "## Loading pickle..."
@@ -737,9 +750,9 @@ class ReadData:
         assumes single read data set per sample.
 
         The file should have the following fields:
-        ID \t Treatment ID \t Replicate Number \t Features \t /Path/To/Read.fq<.gz>
+        ID \t Treatment ID \t Replicate Number \t /Path/To/Read.fq<.gz>
 
-        Features specifies which features to count. It should be a comma separated
+        Features specifies which features to count. It should be a colon separated
         values (e.g., CDS,tRNA). A single feature is also possible (e.g., CDS).
 
         The program will assume the same reference for all the samples. This
@@ -748,11 +761,10 @@ class ReadData:
         self.input_path = os.path.join(self.workdir, infile)
         fi = open(self.input_path)
         for line in fi:
-            (sample_id, treat, rep, feats, path) = tuple(line.strip().split("\t"))
+            (sample_id, treat, rep, path) = tuple(line.strip().split("\t"))
             if sample_id not in self.__dict__["reads"]:
                 self.__dict__["reads"][sample_id] = {"treat":treat, \
                                         "rep":rep, \
-                                        "feats":feats.split(";"), \
                                         "path":path}
             else:
                 print "Sample %s found..." % sample_id
@@ -773,11 +785,12 @@ class ReadData:
             self.__dict__["reads"][r]["link"] = tmp_reads
             self.__dict__["reads"][r]["align"] = os.path.join(tmp_dir, "alignment")
         return
-    def count_features(self, ref, force_align = False, force_count = False):
+    def count_features(self, ref, stranded, overlap, force_align = False, force_count = False):
         global mapper_run
         global sam_view
         global sam_sort
         for r in self.__dict__["reads"]:
+            import pdb; pdb.set_trace()
             outbam = self[r]['align'] + ".bam"
             mapper_run.in_fq1 = self[r]["link"]
             sam_sort.out_prefix = self[r]['align']
@@ -803,8 +816,8 @@ class ReadData:
                                         gff_filename = ref,\
                                         samtype = 'bam',\
                                         order = 'name',\
-                                        stranded = 'reversed',\
-                                        overlap_mode = 'union',\
+                                        stranded = stranded,\
+                                        overlap_mode = overlap,\
                                         feature_type = version, \
                                         id_attribute = 'ID',\
                                         minaqual = 60, \
@@ -881,18 +894,169 @@ class ReadData:
         pellet_con.close()
         print "Pellet successfully created!"
 
-@click.command()
+
+# implementing boobook options and arguments
+@click.command(context_settings=CONTEXT_SETTINGS)
+# Boobook options
 @click.option("--work_dir", "-i", \
                 help = '''
                 The project folder for boobook''', \
                 default = ".")
-@click.option("--force", \
+@click.option("--features", \
                 help = '''
-                Force re-run of analysis''', \
-                is_flag = True)
+                A colon separated list of features to count (e.g. CDS;snRNA)
+                (default: CDS)
+                ''', \
+                default = "CDS")
+@click.option("--qualifier", \
+                help = '''
+                A unique ID to identify distinct elements of the annotation
+                (e.g., locus_tag)
+                ''', \
+                default = 'locus_tag')
+# BWA options
+@click.option("--bwa_threads", \
+                help = "[BWA option] Number of threads for BWA mapping (default: 16)", \
+                default = 16)
+# Samtools options
+@click.option("--sam_threads", \
+                help = "[SAMTOOLS opion] Number of threads for Samtools viewing and sorting (default: 8)", \
+                default = 8)
+#HTSeq options
+@click.option("--hts_stranded", \
+                help = '''[HTSeq option] Strandedness of the RNAseq data ('yes', 'no','reversed')
+                (default: 'reversed')''', \
+                default = 'reversed')
+@click.option("--hts_overlap", \
+                help = '''[HTSeq option] How to account for overlapping features when counting overlapping
+                reads in HTSeq ('union', 'intersection-strict', 'intersection-nonempty')
+                The recommended mode is 'union' (default: union)
+                ''', \
+                default = 'union')
+#Forcing things to get redone options
+@click.option("--add", \
+                help = '''
+                Re-run analysis with additional samples in the infile or with
+                additional features''', \
+                is_flag = True,
+                default = False)
+@click.option("--re_align", \
+                help = '''
+                Re-do alignment of all samples in the project folder''', \
+                is_flag = True,
+                default = False)
+@click.option("--re_count", \
+                help = '''
+                Re-do count of all samples in the project folder''', \
+                is_flag = True,
+                default = False)
+@click.option("--change_ref", \
+                help = '''Re-run analysis with a different reference. Will force
+                re-alignment and re-count.
+                ''',
+                is_flag = True,
+                default = False)
+#The default arguments
+@click.argument('REF')
 @click.argument('INFILE')
-def boobook(infile, work_dir, force):
-    pass
+def boobook(infile, ref, \
+                    work_dir, \
+                    features, \
+                    qualifier, \
+                    bwa_threads, \
+                    sam_threads, \
+                    hts_stranded, \
+                    hts_overlap, \
+                    add, \
+                    re_align, \
+                    re_count,
+                    change_ref):
+    '''Boobook is a tool to transform your RNAseq data into a table of counts
+    suitable for analysis using Degust (http://www.vicbioinformatics.com/degust/).
+
+
+    It requires two inputs:
+
+        * REF: A Genbank reference file\n
+        * INFILE: A TAB-delimited file with information about the reads
+
+    Please post any issues to: https://github.com/MDU-PHL/boobook/issues
+
+    Boobook is distributed under GPL v3.
+
+    Author: Anders Goncalves da Silva
+    '''
+    #make sure alignment and counting is re-done if changing the reference
+    if(change_ref):
+        print("The change_ref flag was triggered...")
+        print("Forcing re-alignment and counting...")
+        re_align = True
+        re_count = True
+
+    # loading the read data information
+    reads = ReadData(work_dir, force = add)
+    reads.read_input(infile)
+    reads.create_subfolders()
+
+    # loading reference information
+    # parse features
+    feat = features.split(";")
+    reference = GBk(work_dir, force = change_ref)
+    reference.read_gb(ref)
+    reference.filter_features(features = feat, qualifier = qualifier)
+    reference.write_gff() # create a standardized GFF to use in HTSeq
+    reference.write_fasta() # create a FASTA reference for use in alignment
+    reads.features = reference.features # transfer the features dict to the
+                                        # reads object. This dict will then
+                                        # be called by a reads method for counting
+
+    # setup alignment
+    #create the commandline call to index the reference
+    mapper_index = BWAindex(in_fasta = reference.fasta)
+    #create the commandline call to align the reads
+    mapper_run = BWAmem(threads = bwa_threads, \
+                        ref = reference.fasta, \
+                        in_fq1 = "dummy.fq") # just a dummy this will be overwritten
+                                             # when looping through the reads
+    #create the commandline call to transform the SAM output into BAM
+    sam_view = SamtoolsViewCommandline(threads = sam_threads, \
+                                        # minimum mapping quality
+                                        q = 60,  \
+                                        # SAM input format
+                                        S = True, \
+                                        # create BAM output
+                                        b = True, \
+                                        #uncompressed BAM output
+                                        u = True, \
+                                        ref = reference.fasta, \
+                                        input = "-") # Take the input from stdin
+    sam_sort = SamtoolsSortCommandline(threads = sam_threads, \
+                                        # take input from stdin
+                                        input_bam = "-", \
+                                        out_prefix = "dummy_prefix") # this will be
+                                                                # overwritten when
+                                                                # looping through the
+                                                                # reads
+    # run the actual commands.
+    # first, index the reference
+    # the str() prints the command, and the .split() splits the command string
+    # by white-space, creating a list with the individual components as needed
+    # by the subprocess.Popen command
+    run_index = subprocess.Popen(str(mapper_index).split())
+    # wait for the indexing to end before doing anything else
+    run_index.wait()
+    reads.count_features(reference.gff, \
+                            stranded = hts_stranded, \
+                            overlap = hts_overlap, \
+                            force_align = re_align, \
+                            force_count = re_count)
+    reads.make_pellet(feat)
+    print('#' * 40)
+    print("Boobook is done!")
+    print("Boobook pellet with all your counts can be found in {}/{}/{}.".format(work_dir, \
+                                                            "pellets", \
+                                                            "boobook_pellet.csv"))
+    return
 
 if __name__ == "__main__":
     boobook()
