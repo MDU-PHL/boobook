@@ -37,10 +37,10 @@ to understand if there are differences in gene expression across treatments.
 In this file, the `TreatmentID` + `ReplicateID` will form the column header. This
 way, `Degust` can group samples by **treatment**. It is important that the
 treatment IDs be **unique**. Thus, if you have different samples (e.g., samples
-from different strains) that have undergone the same treatment, then that
+from different strains) that have undergone the same experimental treatment, then that
 information should be included in the treatment ID. Here is an example file,
-where two strains (**A**, and **B**), have been treated to the same two treatments
-(**T1** and **T2**), with two replicates of each treatment per strain (this makes for a total of 2 x 2 x 2 = 8 rows):
+where two strains (**A**, and **B**), have been treated to the same two experimental treatments
+(**T1** and **T2**), with two replicates of each experimental treatment per strain (this makes for a total of 2 x 2 x 2 = 8 rows):
 
 |SampleID |TreatmentID|ReplicateID|Fastq1|
 |---------|--------|----|------------------|
