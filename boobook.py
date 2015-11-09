@@ -68,7 +68,6 @@ def count_reads_in_features( sam_filename, gff_filename, samtype, order, strande
    # Try to open samfile to fail early in case it is not there
    if sam_filename != "-":
       open( sam_filename ).close()
-
    gff = HTSeq.GFF_Reader( gff_filename )
    i = 0
    try:
@@ -573,12 +572,12 @@ class GBk:
         '''
         fn = os.path.basename(infile)
         base = os.path.splitext(fn)[0]
-        self.fasta = os.path.join(self.reference, base+".fa")
-        self.gff = os.path.join(self.reference, base+".gff")
+        self.fasta = os.path.join(self.reference, base+".fa").encode('ascii', 'ignore')
+        self.gff = os.path.join(self.reference, base+".gff").encode('ascii', 'ignore')
         f = open(infile, 'r')
         self.gb = SeqIO.read(f, 'genbank')
         print "Read file " + infile + " and found:"
-        print "Sequence %s with %i features" % (self.gb.description, len(self.gb.features))
+        print "Sequence %s with %i features and id %s" % (self.gb.description, len(self.gb.features), self.gb.id)
         f.close()
         return
 
@@ -704,7 +703,37 @@ class GFF:
 class Counter:
     def __init__(self, type = 'b+h'):
         self.type = type
-    def count(self,)
+    def create(self,**kwargs):
+        if self.type == 'b+h':
+            self.parameters = kwargs
+            self.mapper_index = BWAindex(in_fasta = self.parameters["ref"])
+            #create the commandline call to align the reads
+            self.mapper_run = BWAmem(threads = self.parameters["bwa_threads"], \
+                                ref = self.parameters["ref"], \
+                                in_fq1 = "dummy.fq") # just a dummy this will be overwritten
+                                                     # when looping through the reads
+            #create the commandline call to transform the SAM output into BAM
+            self.sam_view = SamtoolsViewCommandline(threads = self.parameters["sam_threads"], \
+                                                # minimum mapping quality
+                                                q = 60,  \
+                                                # SAM input format
+                                                S = True, \
+                                                # create BAM output
+                                                b = True, \
+                                                #uncompressed BAM output
+                                                u = True, \
+                                                ref = self.parameters["ref"], \
+                                                input = "-") # Take the input from stdin
+            self.sam_sort = SamtoolsSortCommandline(threads = self.parameters["sam_threads"], \
+                                                # take input from stdin
+                                                input_bam = "-", \
+                                                out_prefix = "dummy_prefix") # this will be
+                                                                        # overwritten when
+                                                                        # looping through the
+                                                                        # reads
+    def run(self):
+        if self.type == 'b+h':
+            pass
 
 class ReadData:
     def __init__(self, path, force):
@@ -785,15 +814,20 @@ class ReadData:
             self.__dict__["reads"][r]["link"] = tmp_reads
             self.__dict__["reads"][r]["align"] = os.path.join(tmp_dir, "alignment")
         return
-    def count_features(self, ref, stranded, overlap, force_align = False, force_count = False):
-        global mapper_run
-        global sam_view
-        global sam_sort
+    def count_features(self, ref, counter_obj, stranded, overlap, force_align = False, force_count = False):
+        # global mapper_run
+        # global sam_view
+        # global sam_sort
+        sam_view = counter_obj.sam_view
         for r in self.__dict__["reads"]:
-            import pdb; pdb.set_trace()
             outbam = self[r]['align'] + ".bam"
+            mapper_run = counter_obj.mapper_run
+            sam_sort = counter_obj.sam_sort
             mapper_run.in_fq1 = self[r]["link"]
             sam_sort.out_prefix = self[r]['align']
+            print(str(mapper_run))
+            print(str(sam_view))
+            print(str(sam_sort))
             print '#' * 80
             if not os.path.isfile(outbam) or force_align:
                 print '#### RUNNING BWA MEM on %s' % r
@@ -942,7 +976,8 @@ class ReadData:
                 default = False)
 @click.option("--re_align", \
                 help = '''
-                Re-do alignment of all samples in the project folder''', \
+                Re-do alignment of all samples in the project folder. Will force
+                re-count''', \
                 is_flag = True,
                 default = False)
 @click.option("--re_count", \
@@ -993,6 +1028,20 @@ def boobook(infile, ref, \
         re_align = True
         re_count = True
 
+    # fix path if 'dot' is used
+    # this generates issues when reading the GFF file back to count the
+    # features.
+    # then try to create the workdir if not the current dir
+    work_dir = work_dir.encode('ascii', 'ignore')
+    if work_dir == '.':
+        work_dir = os.getcwd()
+    else:
+        if not os.path.isdir(work_dir):
+            try:
+                makedirs(work_dir)
+            except:
+                pass
+        
     # loading the read data information
     reads = ReadData(work_dir, force = add)
     reads.read_input(infile)
@@ -1009,9 +1058,14 @@ def boobook(infile, ref, \
     reads.features = reference.features # transfer the features dict to the
                                         # reads object. This dict will then
                                         # be called by a reads method for counting
+    #import pdb; pdb.set_trace()
 
     # setup alignment
     #create the commandline call to index the reference
+    boobook_counter = Counter(type = 'b+h')
+    boobook_counter.create(ref = reference.fasta, \
+                            bwa_threads = bwa_threads, \
+                            sam_threads = sam_threads)
     mapper_index = BWAindex(in_fasta = reference.fasta)
     #create the commandline call to align the reads
     mapper_run = BWAmem(threads = bwa_threads, \
@@ -1046,6 +1100,7 @@ def boobook(infile, ref, \
     # wait for the indexing to end before doing anything else
     run_index.wait()
     reads.count_features(reference.gff, \
+                            counter_obj = boobook_counter, \
                             stranded = hts_stranded, \
                             overlap = hts_overlap, \
                             force_align = re_align, \
