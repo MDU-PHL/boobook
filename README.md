@@ -19,30 +19,56 @@ to understand if there are differences in gene expression across treatments.
 
 * `HTseq` (>=version 0.6.0)
 
-<!--
 # Inputs
 
 ## Positional arguments
+<reference>.<gbk>
+
+    * A Genbank file --- the defaults assume that it contains a locus_tag
+
 <project_file>.<csv|tsv>:
 
-    * A comma-delimited or tab-delimited file with the following columns:
+    * A comma-delimited or tab-delimited file with the following columns
+        (it assumes no header column):
       1. SampleID --- a string
       2. ReplicateID --- a string or an integer
-      3. SeqType --- either SE or PE for single and paired-end, respectively
       4. Fastq1 --- /path/to/fastq1.fq.gz
-      5. Fastq2 --- /path/to/fastq2.fq.gz (ignored if SeqType = SE)
-
-<reference>.<gbk|gff>
-
-    * A Genbank or GFF file with a FASTA file
+      5. Fastq2 --- /path/to/fastq2.fq.gz (this column is OPTIONAL)
 
 ## Optional arguments
---threads: number of threads to use when mapping (default: 16)
---outdir: /path/to/outdir (default: .)
---stranded: reverse, forward, both (default: reverse)
---feature: which feature to count mapping reads from (default: CDS)
-            must be in the GBK or GFF file
--->
+--work_dir: the folder where the boobook analysis (default: '.'). Will try to
+            create the folder if it does not exist
+
+--features: A colon separated list of features to count (e.g., CDS;snRNA). must
+            match features in the Genbank file (default: CDS).
+
+--qualifier: A unique identifier for individual elements of the genomic
+             annotation --- we highly recommend using **locus_tag**
+             (default: locus_tag)
+
+--bwa_threads: [**BWA option**] Number of threads used by BWA during mapping
+               (default: 16)
+
+--sam_threads: [**SAMtools options**] Number of threads used by SAMtools when
+               generating BAM file and sorting (default: 8)
+
+--hts_stranded: [**HTSeq option**] Strandedness of RNAseq data. Possible options:
+                'yes', 'no', and 'reversed' (default: 'reversed')
+
+--hts_overlap: [**HTSeq option**] Tells **HTSeq** how to count overlapping features.
+                The options are: 'union', 'intersection-strict', 'intersection-nonempty'.
+                The user is directed to the HTSeq website to find out [more](http://www-huber.embl.de/users/anders/HTSeq/doc/count.html).
+                (default: 'reversed')
+--add: Re-run analysis with additional samples in the infile or with additional
+        features.
+
+--re_align: Force re-alignment of all samples in the project folder. Will force
+            re-count.
+
+--re_count: Force re-count of all samples in the project folder.
+
+--change_ref: Re-run analysis with a different reference. Will force re-alignment
+              and re-count.
 
 # Outputs
 
@@ -106,18 +132,16 @@ stats.text
     * some QC data
 -->
 # TODO
-
- * Add an argument parser
-
- * Fix up the input tab file
-
-    - Needs to include a column to let the program know to update count
-
- * Need to allow the count of more than one feature --- right now only CDS
-
- * Update documentation
+    - Update the Counter class to make things a little more modular
+    - Add support for sailfish and kallisto
 
 # History
+
+* 2015-11-09:
+    - Added argument parser
+    - Updated documentation to include information on infile and arguments/options
+    - Can now count any arbitrary number of feature types
+
 
 * 2015-10-14: Pellets can be saved, and rows contain metadata to identify the
 feature.
