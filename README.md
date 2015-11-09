@@ -150,8 +150,13 @@ stats.text
 # TODO
     - Update the Counter class to make things a little more modular
     - Add support for sailfish and kallisto
+    - Ensure column names for treatment are unique
 
 # History
+* 2015-11-10
+    - Output contains a 'Length' column for each feature
+    - A `--version` option now works
+    - Version name in GFF file is now consistent with the version option
 
 * 2015-11-09:
     - Added argument parser

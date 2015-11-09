@@ -547,10 +547,12 @@ class GBk:
     '''
     A class that reads and stores GenBank
     '''
-    def __init__(self, path, force):
+    def __init__(self, path, force, add_reads):
         self.reference = os.path.join(path, "reference")
         if os.path.isdir(self.reference):
-            if not force:
+            if add_reads or force:
+                return
+            else:
                 raise RuntimeError('''
                     Analysis has been run already. Use --change_ref flag to \n
                             re-run using the same directory with a different
@@ -681,7 +683,7 @@ class GBk:
         sorted_gff_recs = sorted(gff_recs, key=itemgetter(3))
         out_str = ""
         out_str += "##gff-version 3\n"
-        out_str += "##source-version boobook.py 0.01\n"
+        out_str += "##source-version {}\n".format(version)
         out_str += "##data This file was mode on " + time.strftime("%d/%m/%Y") + "\n"
         out_str += "##description " + self.gb.description + "\n"
         out_str += "##sequence-region " + refname + " " + "1 " + str(len(self.gb.seq)) + "\n"
@@ -788,11 +790,11 @@ class ReadData:
         The file should have the following fields:
         ID \t Treatment ID \t Replicate Number \t /Path/To/Read.fq<.gz>
 
-        Features specifies which features to count. It should be a colon separated
+        Features specifies which features to count. It should be comma separated
         values (e.g., CDS,tRNA). A single feature is also possible (e.g., CDS).
 
         The program will assume the same reference for all the samples. This
-        seems reasonable given the analysis
+        seems reasonable given the analysis.
         '''
         self.input_path = os.path.join(self.workdir, infile)
         fi = open(self.input_path)
@@ -885,6 +887,7 @@ class ReadData:
             gene_id = ""
             gi = ""
             gene = ""
+            length = 0
             tmp_qual = self.features[f]
             for feat in include_features:
                 # if feat == 'tRNA':
@@ -893,6 +896,7 @@ class ReadData:
                 try:
                     quals = tmp_qual[feat].qualifiers
                     feat_type = feat
+                    length = len(tmp_qual[feat])
                     try:
                         product = '"' + quals["product"][0] + '"'
                     except:
@@ -915,12 +919,12 @@ class ReadData:
                         pass
                 except:
                     pass
-            feat_counts.extend([product, gene_id, gi, gene, feat_type])
+            feat_counts.extend([product, gene_id, gi, gene, feat_type, str(length)])
             for r in read_sets:
                 feat_counts.append(str(self.__dict__["reads"][r]["counts"][f]))
             feat_counts = ",".join(feat_counts) + "\n"
             collated_counts.append(feat_counts)
-        header = ["locus_tag", "Product", "GeneID", "GI", "Gene", "Feature"]
+        header = ["locus_tag", "Product", "GeneID", "GI", "Gene", "Feature", "Length"]
         for r in read_sets:
             tmp = self.__dict__["reads"][r]['treat'] + "_" + \
                 self.__dict__["reads"][r]['rep']
@@ -938,6 +942,8 @@ class ReadData:
 
 # implementing boobook options and arguments
 @click.command(context_settings=CONTEXT_SETTINGS)
+@click.version_option(version = version, \
+                    message = '''boobook {}'''.format(version.split(":")[1]))
 # Boobook options
 @click.option("--work_dir", \
                 help = '''
@@ -1048,7 +1054,7 @@ def boobook(infile, ref, \
     # loading reference information
     # parse features
     feat = features.split(",")
-    reference = GBk(work_dir, force = change_ref)
+    reference = GBk(work_dir, force = change_ref, add_reads = add)
     reference.read_gb(ref)
     reference.filter_features(features = feat, qualifier = qualifier)
     reference.write_gff() # create a standardized GFF to use in HTSeq
