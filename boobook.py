@@ -932,13 +932,13 @@ class ReadData:
 # implementing boobook options and arguments
 @click.command(context_settings=CONTEXT_SETTINGS)
 # Boobook options
-@click.option("--work_dir", "-i", \
+@click.option("--work_dir", \
                 help = '''
                 The project folder for boobook''', \
                 default = ".")
 @click.option("--features", \
                 help = '''
-                A colon separated list of features to count (e.g., CDS;snRNA)
+                A comma separated list of features to count (e.g., CDS,snRNA)
                 (default: CDS)
                 ''', \
                 default = "CDS")
@@ -958,7 +958,7 @@ class ReadData:
                 default = 8)
 #HTSeq options
 @click.option("--hts_stranded", \
-                help = '''[HTSeq option] Strandedness of the RNAseq data ('yes', 'no','reversed')
+                help = '''[HTSeq option] Strandedness of the RNAseq data ('yes', 'no', 'reversed')
                 (default: 'reversed')''', \
                 default = 'reversed')
 @click.option("--hts_overlap", \
@@ -1049,7 +1049,7 @@ def boobook(infile, ref, \
 
     # loading reference information
     # parse features
-    feat = features.split(";")
+    feat = features.split(",")
     reference = GBk(work_dir, force = change_ref)
     reference.read_gb(ref)
     reference.filter_features(features = feat, qualifier = qualifier)

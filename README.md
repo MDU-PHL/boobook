@@ -37,7 +37,7 @@ to understand if there are differences in gene expression across treatments.
 --work_dir: the folder where the boobook analysis (default: '.'). Will try to
             create the folder if it does not exist
 
---features: A colon separated list of features to count (e.g., CDS;snRNA). must
+--features: A comma separated list of features to count (e.g., CDS;snRNA). must
             match features in the Genbank file (default: CDS).
 
 --qualifier: A unique identifier for individual elements of the genomic
