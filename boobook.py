@@ -798,15 +798,20 @@ class ReadData:
         '''
         self.input_path = os.path.join(self.workdir, infile)
         fi = open(self.input_path)
+        column_headers = []
         for line in fi:
             (sample_id, treat, rep, path) = tuple(line.strip().split("\t"))
             if sample_id not in self.__dict__["reads"]:
                 self.__dict__["reads"][sample_id] = {"treat":treat, \
                                         "rep":rep, \
                                         "path":path}
+                column_headers.append(self.__dict__["reads"][sample_id]['treat'] + "_" + self.__dict__["reads"][sample_id]['rep'])
             else:
                 print "Sample %s found..." % sample_id
         fi.close()
+        column_set = set(column_headers)
+        if len(column_set) < len(column_headers):
+            raise ValueError('''It seems you might have duplicate replicates for the same treatment. This will cause problems in Degust, as there will be columns with duplicate headers. If you have multiple species/strains/genotypes being tested across the same treatments, consider adding a sample type identifier to the treatment ID (e.g., SA_T1, SB_T1, SC_T1, etc). Check the instructions on the github page for a more in-depth example: https://github.com/MDU-PHL/boobook''')
         return
     def create_subfolders(self):
         for r in self.__dict__["reads"]:

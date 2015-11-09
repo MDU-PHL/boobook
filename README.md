@@ -28,10 +28,31 @@ to understand if there are differences in gene expression across treatments.
 
     * A comma-delimited or tab-delimited file with the following columns
     (it assumes no header column):
-      1. SampleID --- a string
-      2. ReplicateID --- a string or an integer
+      1. SampleID --- a string **Must uniquely identify each row**
+      2. TreatmentID -- a string **Must not include spaces**
+      3. ReplicateID --- a string or an integer
       4. Fastq1 --- /path/to/fastq1.fq.gz
       5. Fastq2 --- /path/to/fastq2.fq.gz (this column is OPTIONAL)
+
+In this file, the `TreatmentID` + `ReplicateID` will form the column header. This
+way, `Degust` can group samples by **treatment**. It is important that the
+treatment IDs be **unique**. Thus, if you have different samples (e.g., samples
+from different strains) that have undergone the same treatment, then that
+information should be included in the treatment ID. Here is an example file,
+where two strains (**A**, and **B**), have been treated to the same two treatments
+(**T1** and **T2**), with two replicates of each treatment per strain (this makes for a total of 2 x 2 x 2 = 8 rows):
+
+|SampleID |TreatmentID|ReplicateID|Fastq1|
+|---------|--------|----|------------------|
+|Sample1  |A_T1    |1   |/path/to/A_T1_1.fq|
+|Sample2  |A_T1    |2   |/path/to/A_T1_2.fq|
+|Sample3  |A_T1    |1   |/path/to/A_T2_1.fq|
+|Sample4  |A_T2    |2   |/path/to/A_T2_2.fq|
+|Sample5  |B_T1    |1   |/path/to/B_T1_1.fq|
+|Sample6  |B_T1    |2   |/path/to/B_T1_2.fq|
+|Sample7  |B_T1    |1   |/path/to/B_T2_1.fq|
+|Sample8  |B_T2    |2   |/path/to/B_T2_2.fq|
+
 
 ## Optional arguments
 --work_dir: the folder where the boobook analysis (default: '.'). Will try to
@@ -155,8 +176,13 @@ stats.text
 # History
 * 2015-11-10
     - Output contains a 'Length' column for each feature
-    - A `--version` option now works
+    - The `--version` flag now works
     - Version name in GFF file is now consistent with the version option
+    - Updated information on the input file
+    - Added check to ensure that `TreatmentID` + `ReplicateID` leads to unique
+        column name combinations to avoid an error in `Degust`. If an error is
+        found, then `boobook` raises an error with information on why, and quits.
+        The check is done early on, to avoid unnecessary waiting by the user.
 
 * 2015-11-09:
     - Added argument parser
