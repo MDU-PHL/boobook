@@ -22,14 +22,12 @@ to understand if there are differences in gene expression across treatments.
 # Inputs
 
 ## Positional arguments
-<reference>.<gbk>
+* REF --- A Genbank file: the defaults assume that it contains a locus_tag
 
-    * A Genbank file --- the defaults assume that it contains a locus_tag
-
-<project_file>.<csv|tsv>:
+* INFILE:
 
     * A comma-delimited or tab-delimited file with the following columns
-        (it assumes no header column):
+    (it assumes no header column):
       1. SampleID --- a string
       2. ReplicateID --- a string or an integer
       4. Fastq1 --- /path/to/fastq1.fq.gz
@@ -69,6 +67,24 @@ to understand if there are differences in gene expression across treatments.
 
 --change_ref: Re-run analysis with a different reference. Will force re-alignment
               and re-count.
+
+# Examples
+
+Simple run with BWA alignment and HTSeq counts run in the current directory:
+
+        boobook.py myref.gbk myinfile.tab
+
+Outputting `boobook` analysis to `my_workdir`:
+
+        boobook.py --work_dir my_workdir myref.gbk myinfile.tab
+
+Assuming RNAseq data is no stranded:
+
+        boobook.py --hts_stranded no myref.gbk myinfile.tab
+
+Want to count both CDS and  snRNA:
+
+        boobook.py --features CDS;snRNA myref.gbk myinfile.tab
 
 # Outputs
 
