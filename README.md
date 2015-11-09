@@ -78,7 +78,7 @@ Outputting `boobook` analysis to `my_workdir`:
 
         boobook.py --work_dir my_workdir myref.gbk myinfile.tab
 
-Assuming RNAseq data is no stranded:
+Assuming RNAseq data is not stranded:
 
         boobook.py --hts_stranded no myref.gbk myinfile.tab
 
