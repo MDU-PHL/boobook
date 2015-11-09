@@ -938,7 +938,7 @@ class ReadData:
                 default = ".")
 @click.option("--features", \
                 help = '''
-                A colon separated list of features to count (e.g. CDS;snRNA)
+                A colon separated list of features to count (e.g., CDS;snRNA)
                 (default: CDS)
                 ''', \
                 default = "CDS")
@@ -1041,7 +1041,7 @@ def boobook(infile, ref, \
                 makedirs(work_dir)
             except:
                 pass
-        
+
     # loading the read data information
     reads = ReadData(work_dir, force = add)
     reads.read_input(infile)
@@ -1115,25 +1115,3 @@ def boobook(infile, ref, \
 
 if __name__ == "__main__":
     boobook()
-    # debug = False
-    # if debug and os.path.isdir("test/sample_counts/"):
-    #     shutil.rmtree("test/sample_counts/")
-    # reads = ReadData("test/", force = True)
-    # reads.read_input("infile.tab")
-    # reads.create_subfolders()
-    # reference = GBk("test/", force = True)
-    # reference.read_gb(infile = "test/Saa6008_final.gbk")
-    # reference.filter_features(features = ['CDS','scRNA'], qualifier = 'locus_tag')
-    # reference.write_gff()
-    # reference.write_fasta()
-    # reads.features = reference.features
-    # # for k in reads.features.keys():
-    # #     print reads.features[k]['CDS']
-    # mapper_index = BWAindex(in_fasta = reference.fasta)
-    # mapper_run = BWAmem(threads = 72, ref = reference.fasta, in_fq1 = reads["Sa_JKD6009_L30T_1"]["link"])
-    # sam_view = SamtoolsViewCommandline(threads = 8, q=60, S=True, b = True, u = True, ref = reference.fasta, input = "-")
-    # sam_sort = SamtoolsSortCommandline(threads = 8, input_bam = "-", out_prefix = reads["Sa_JKD6009_L30T_1"]["align"])
-    # run_index = subprocess.Popen(str(mapper_index).split())
-    # run_index.wait()
-    # reads.count_features(reference.gff, force_align = True)
-    # reads.make_pellet(['CDS','scRNA'])
