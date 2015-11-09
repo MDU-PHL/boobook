@@ -46,11 +46,11 @@ where two strains (**A**, and **B**), have been treated to the same two treatmen
 |---------|--------|----|------------------|
 |Sample1  |A_T1    |1   |/path/to/A_T1_1.fq|
 |Sample2  |A_T1    |2   |/path/to/A_T1_2.fq|
-|Sample3  |A_T1    |1   |/path/to/A_T2_1.fq|
+|Sample3  |A_T2    |1   |/path/to/A_T2_1.fq|
 |Sample4  |A_T2    |2   |/path/to/A_T2_2.fq|
 |Sample5  |B_T1    |1   |/path/to/B_T1_1.fq|
 |Sample6  |B_T1    |2   |/path/to/B_T1_2.fq|
-|Sample7  |B_T1    |1   |/path/to/B_T2_1.fq|
+|Sample7  |B_T2    |1   |/path/to/B_T2_1.fq|
 |Sample8  |B_T2    |2   |/path/to/B_T2_2.fq|
 
 
