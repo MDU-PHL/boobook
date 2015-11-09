@@ -25,8 +25,11 @@ import click
 ## default parameters
 version = "boobook:0.1"
 
-# to ensure click gives us the option for -h and --help
-CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
+# to ensure click gives us the option for -h and --help and set the column
+# width of the console so as to make printing of help easy to read
+rows, columns = os.popen('stty size', 'r').read().split()
+CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'],
+                        max_content_width = columns)
 
 ## modified count script from HTSeq
 
@@ -938,14 +941,12 @@ class ReadData:
                 default = ".")
 @click.option("--features", \
                 help = '''
-                A comma separated list of features to count (e.g., CDS,snRNA)
-                (default: CDS)
+                A comma separated list of features to count (e.g., CDS,snRNA) (default: CDS)
                 ''', \
                 default = "CDS")
 @click.option("--qualifier", \
                 help = '''
-                A unique ID to identify distinct elements of the annotation
-                (e.g., locus_tag)
+                A unique ID to identify distinct elements of the annotation (e.g., locus_tag)
                 ''', \
                 default = 'locus_tag')
 # BWA options
@@ -958,26 +959,21 @@ class ReadData:
                 default = 8)
 #HTSeq options
 @click.option("--hts_stranded", \
-                help = '''[HTSeq option] Strandedness of the RNAseq data ('yes', 'no', 'reversed')
-                (default: 'reversed')''', \
+                help = '''[HTSeq option] Strandedness of the RNAseq data ('yes', 'no', 'reversed') (default: 'reversed')''', \
                 default = 'reversed')
 @click.option("--hts_overlap", \
-                help = '''[HTSeq option] How to account for overlapping features when counting overlapping
-                reads in HTSeq ('union', 'intersection-strict', 'intersection-nonempty')
-                The recommended mode is 'union' (default: union)
+                help = '''[HTSeq option] How to account for overlapping features when counting overlapping reads in HTSeq ('union', 'intersection-strict', 'intersection-nonempty') The recommended mode is 'union' (default: 'union')
                 ''', \
                 default = 'union')
 #Forcing things to get redone options
 @click.option("--add", \
                 help = '''
-                Re-run analysis with additional samples in the infile or with
-                additional features''', \
+                Re-run analysis with additional samples in the infile or with additional features''', \
                 is_flag = True,
                 default = False)
 @click.option("--re_align", \
                 help = '''
-                Re-do alignment of all samples in the project folder. Will force
-                re-count''', \
+                Re-do alignment of all samples in the project folder. Will force re-count''', \
                 is_flag = True,
                 default = False)
 @click.option("--re_count", \
@@ -986,8 +982,7 @@ class ReadData:
                 is_flag = True,
                 default = False)
 @click.option("--change_ref", \
-                help = '''Re-run analysis with a different reference. Will force
-                re-alignment and re-count.
+                help = '''Re-run analysis with a different reference. Will force re-alignment and re-count.
                 ''',
                 is_flag = True,
                 default = False)
@@ -1006,8 +1001,7 @@ def boobook(infile, ref, \
                     re_align, \
                     re_count,
                     change_ref):
-    '''Boobook is a tool to transform your RNAseq data into a table of counts
-    suitable for analysis using Degust (http://www.vicbioinformatics.com/degust/).
+    '''Boobook is a tool to transform your RNAseq data into a table of counts suitable for analysis using Degust (http://www.vicbioinformatics.com/degust/).
 
 
     It requires two inputs:
