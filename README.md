@@ -63,7 +63,9 @@ where two strains (**A**, and **B**), have been treated to the same two experime
 
 --qualifier: A unique identifier for individual elements of the genomic
              annotation --- we highly recommend using **locus_tag**
-             (default: locus_tag)
+             (default: locus_tag). Multiple unique qualifiers can be used, but is
+             discouraged. If used, should be comma separated list
+             (locus_tag,GFF_attributes). READ FAQ BELOW.
 
 --bwa_threads: [**BWA option**] Number of threads used by BWA during mapping
                (default: 16)
@@ -168,6 +170,53 @@ stats.text
 
     * some QC data
 -->
+
+# FAQ
+
+1. Why is my GFF is empty or missing features of interest, and it produces no
+counts for one or more of my features of interest?
+
+`boobook` expects two pieces of information in order to count annotated features:
+    1. The feature type (e.g., CDS)
+    2. A unique identifier (e.g., locus_tag)
+
+If your Genbank file does not contain information for the unique identifier for all
+your features of interest, then it will fail. You can check the screen output
+to see if `boobook` is having trouble finding your features of interest. It will
+print something to this effect:
+
+> Total features found = 690
+> Total features found with qualifier = 0
+> Counts per feature type:
+>	ncRNA = 0
+> #####
+>	misc_feature = 8085
+>	tRNA = 53
+>	STS = 3
+>	source = 1
+>	rRNA = 16
+>	CDS = 2560
+>	misc_RNA = 1
+>	gene = 2648
+>	ncRNA = 690
+
+Here, the `Total features found` line tells you how many features of the type
+you wish to count were found in your Genbank file. The `Total features found with qualifier`
+line tells you how many of those features have the specified unique identifier.
+The following lines give the `Counts per feature type`, which includes the occurrences
+with the unique identifier and included in subsequent `boobook` steps above the
+`#####` line, and the total count per feature annotated in the Genbank file below
+the line.
+
+In general, this option is discouraged, as it might be possible that multiple
+identifiers identify the same feature, or the same identifier identifies multiple
+features. The current implementation has in mind account for the case where one
+feature type (say CDS) has a unique identifier (say locus_tag), and another
+feature type of interest (say ncRNA) has another unique identifier (say GFF_Attributes).
+
+**Ideally, and by all features should have a locus_tag.** Please read about it
+[here](http://www.ebi.ac.uk/ena/submit/locus-tags).
+
 # TODO
     - Update the Counter class to make things a little more modular
     - Add support for sailfish and kallisto

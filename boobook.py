@@ -603,16 +603,27 @@ class GBk:
         #transfomr qualifier into ascii
         # this allows the assert below to pass if the string is in unicode
         # format, as it comes out of click
-        qualifier = qualifier.encode('ascii', 'ignore')
+        qualifier = [q.encode('ascii', 'ignore') for q in qualifier]
         if (not isinstance(features, list)):
             features = [features]
-        assert type(qualifier) is str, "qualifier is not a string: %r" % qualifier
+        ## adding support for multiple unique identying qualifiers
+        ## this assumes that one feature uses locus_tag for instance, and another
+        ## feature uses something else. the user will get a warning that using
+        ## multiple unique identifiers is not the best practice, and could lead
+        ## to errors.
+        try:
+            assert type(qualifier) is str, "qualifier is not a string: %r" % qualifier
+        except:
+            assert type(qualifier) is list, "qualifier is neither a str nor list: %r" % qualifier
+            if (len(qualifier) > 1):
+                warnings.warn("By using a list of unique identifiers you might run into problems later! You should satisfy yourself that there is a one-one mapping of identifier to feature type, and that each unique identifier uniquely identifies a single feature in the Genbank file. THIS OPTION MIGHT BE DEPRECATED IF IT CAUSES TOO MANY PROBLEMS.")
         self.features = {}
         tmp_count = 0
         tmp_dict = {}
         count_found_features = 0
         count_found_features_with_qualifiers = 0
         count_per_feature = dict((f, 0) for f in features)
+        flag = 1
         for (index, feat) in enumerate(self.gb.features):
             tmp_count += 1
             try:
@@ -621,10 +632,19 @@ class GBk:
                 tmp_dict[feat.type] = 1
             if feat.type in features:
                 count_found_features += 1
-                if qualifier in feat.qualifiers:
+                ## adding lines to support multiple qualifiers
+                q = [q for q in qualifier if q in feat.qualifiers]
+                if len(q) > 1:
+                    raise("The list of unique identifiers co-occur in a feature! Assuming the first one is the correct")
+                # original line when assuming a single qualifier (e.g., locus_tag)
+                #if qualifier in feat.qualifiers:
+                if len(q) != 0:
+                    q = q[0]
                     count_found_features_with_qualifiers += 1
                     count_per_feature[feat.type] += 1
-                    qual = feat.qualifiers[qualifier]
+                    # commented out when adding support for multiple qualifiers
+                    #qual = feat.qualifiers[qualifier]
+                    qual = feat.qualifiers[q]
                     if len(qual) is not 1:
                         raise("Expected single entry for qualifier, assuming the \
                         first element is correct.")
@@ -643,7 +663,7 @@ class GBk:
         for f in tmp_dict:
             print "\t" + f + " = " + str(tmp_dict[f])
         return
-    def write_gff(self):
+    def write_gff(self, qualifier):
         '''
         Write a GFF output file that can be read by htseq-count
         '''
@@ -666,9 +686,11 @@ class GBk:
                 tmp_rec = feature_d['CDS']
             else:
                 tmp_rec = feature_d[feature_k[0]]
-            if feature_k[0] == 'tRNA':
-                print feature_d[feature_k[0]]
-            ltag = tmp_rec.qualifiers['locus_tag'][0]
+            # if feature_k[0] == 'ncRNA':
+            #     print feature_d[feature_k[0]]
+            ## adding support for multiple qualifiers
+            q = [q for q in qualifier if q in tmp_rec.qualifiers][0]
+            ltag = tmp_rec.qualifiers[q][0]
             coords = tmp_rec.location
             (start, end, strand) = self.__parse_location(coords)
             attrib = "ID="+ltag+";Type="+feature_k[0]
@@ -860,6 +882,7 @@ class ReadData:
             print '#' * 80
             if 'counts' not in self.__dict__["reads"][r] or force_count or force_align:
                 print '#### COUNTING READS MAPPED TO FEATURES on %s' % r
+                #import pdb; pdb.set_trace()
                 self[r]['counts'] = count_reads_in_features(sam_filename = outbam,\
                                         gff_filename = ref,\
                                         samtype = 'bam',\
@@ -868,7 +891,7 @@ class ReadData:
                                         overlap_mode = overlap,\
                                         feature_type = version, \
                                         id_attribute = 'ID',\
-                                        minaqual = 60, \
+                                        minaqual = 10, \
                                         quiet = False, \
                                         samout = "")
             else:
@@ -961,7 +984,7 @@ class ReadData:
                 default = "CDS")
 @click.option("--qualifier", \
                 help = '''
-                A unique ID to identify distinct elements of the annotation (e.g., locus_tag)
+                A unique ID to identify distinct elements of the annotation (e.g., locus_tag). Multiple unique qualifiers can be used, but is discouraged. If used, should be comma separated list (locus_tag,GFF_attributes). See README for further details.
                 ''', \
                 default = 'locus_tag')
 # BWA options
@@ -974,12 +997,16 @@ class ReadData:
                 default = 8)
 #HTSeq options
 @click.option("--hts_stranded", \
-                help = '''[HTSeq option] Strandedness of the RNAseq data ('yes', 'no', 'reversed') (default: 'reversed')''', \
-                default = 'reversed')
+                help = '''[HTSeq option] Strandedness of the RNAseq data ('yes', 'no', 'reverse') (default: 'reverse')''', \
+                default = 'reverse',
+                type = click.Choice(['yes','no','reverse']))
 @click.option("--hts_overlap", \
                 help = '''[HTSeq option] How to account for overlapping features when counting overlapping reads in HTSeq ('union', 'intersection-strict', 'intersection-nonempty') The recommended mode is 'union' (default: 'union')
                 ''', \
-                default = 'union')
+                default = 'union',
+                type = click.Choice(['union', \
+                'intersection-strict', \
+                'intersection-nonempty']))
 #Forcing things to get redone options
 @click.option("--add", \
                 help = '''
@@ -1059,10 +1086,11 @@ def boobook(infile, ref, \
     # loading reference information
     # parse features
     feat = features.split(",")
+    quals = qualifier.split(",") # adding support for muiltiple qualifiers
     reference = GBk(work_dir, force = change_ref, add_reads = add)
     reference.read_gb(ref)
-    reference.filter_features(features = feat, qualifier = qualifier)
-    reference.write_gff() # create a standardized GFF to use in HTSeq
+    reference.filter_features(features = feat, qualifier = quals)
+    reference.write_gff(qualifier = quals) # create a standardized GFF to use in HTSeq
     reference.write_fasta() # create a FASTA reference for use in alignment
     reads.features = reference.features # transfer the features dict to the
                                         # reads object. This dict will then
